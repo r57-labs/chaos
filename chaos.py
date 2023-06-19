@@ -5,7 +5,6 @@
 import argparse
 import csv		# output file
 import datetime		# logging
-import gzip             # content decode
 import os		# file validation, cpu count
 import ipaddress 	# for CIDR support
 import logging
@@ -13,12 +12,10 @@ import random		# for -r flag to randomize IPs
 import re
 import requests		# for modified web requests
 import socket 		# ip addr valition, and dns lookups
-import textwrap 	# formatting (argparse art & desc)
 import time		# rate limiting
 import warnings		# filter/ignore unverified https
 
 from concurrent.futures import ThreadPoolExecutor, as_completed # threads!
-from io import BytesIO                                          # content decode
 from tld import get_tld						# validate FQDNs without regex
 from tqdm import tqdm                                           # progress bar?!
 
@@ -344,19 +341,26 @@ def get_response_content_summary(response):
         resp_ctnt = re.sub("'", '', resp_ctnt)
     return resp_ctnt
 
+def looks_ipv6(addr):
+    """
+    Quick check; assumes a prior validated IPv[4|6] addr will have no dot and will have a colon if it's IPv6
+    """
+    return '.' not in addr and ':' in addr
 
 def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep_val):
     """
     Support threading for prep task to check if IP/PORT is responsive to 'GET /' using 'Host: {ip}:{port}'
     """
     result = None
+    proto = "http"
     # TBD: implement a better SSL/TLS protocol check
     if port == '443' or re.match('.*443.*', port):
-        url = 'https://' + ip + ':' + port
+        proto = 'https'
+    if looks_ipv6(ip):
+        url = f"{proto}://[{ip}]:{port}/"
     else:
-        url = 'http://' + ip + ':' + port
-    ip_port = f"{ip}:{port}"
-    headers = {'Host': ip_port}
+        url = f"{proto}://{ip}:{port}/"
+    headers = {'Host': f"{ip}:{port}"}
     if agent:
         headers.update({'User-Agent': agent})
     if test:
@@ -367,10 +371,22 @@ def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep
         if response.status_code // 100 in [1, 2, 3, 4, 5]:
             result = PrepResult(ip, port, response)
     except requests.exceptions.RequestException as e:
-        # ignore hosts that do not respond
-        None
+        err_msg = re.sub(r"[\r\n]+", "", str(e))
+        if "'Connection aborted.', ConnectionResetError(54, 'Connection reset by peer')" in err_msg and proto == "http":
+            if verbose:
+                tqdm.write(f"  [prep-check] [{thread_id}] Trying HTTPS protocol after reset from HTTP connection")
+            if sleep_val > 0:
+                time.sleep(sleep_val)
+            try:
+                response = requests.get(f"https://{url.split('http://')[1]}", headers=headers, verify=False, allow_redirects=False, timeout=timeout)
+                if response.status_code // 100 in [1, 2, 3, 4, 5]:
+                    result = PrepResult(ip, port, response)
+            except requests.exceptions.RequestException as e:
+                # ignore hosts that do not respond
+                None
     except Exception as e:
-        tqdm.write(f"  [prep-check] [{thread_id}] ERROR: {e}")
+        if verbose:
+            tqdm.write(f"  [prep-check] [{thread_id}] ERROR: {e}")
     if sleep_val > 0:
         time.sleep(sleep_val) # sleep between requests
     return result
@@ -380,12 +396,15 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
     Support threading for testing IP:PORT using FQDN in HTTP Host header
     """
     result = None
+    proto = "http"
     # TBD: implement a better SSL/TLS protocol check
     if port == '443' or re.match('.*443.*', port):
-        url = 'https://' + ip + ':' + port
+        proto = 'https'
+    if looks_ipv6(ip):
+        url = f"{proto}://[{ip}]:{port}/"
     else:
-        url = 'http://' + ip + ':' + port
-    headers = {'Host': fqdn}
+        url = f"{proto}://{ip}:{port}/"
+    headers = {'Host': f"{ip}:{port}"}
     if agent:
         headers.update({'User-Agent': agent})
     if test:
@@ -403,14 +422,35 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
                 tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port}")
             result = TestResult(fqdn, ip, port, response)
     except requests.exceptions.RequestException as e:
-        if verbose:
-            err_msg = re.sub(r"[\r\n]+", "", str(e))
-            if "ConnectTimeoutError" in err_msg:
-                tqdm.write(f"  [{thread_id}] RequestsException: Timeout / Retries Exceeded: {fqdn} / {ip} / {port}")
-            else:
-                tqdm.write(f"  [{thread_id}] RequestsException: {err_msg}")
+        err_msg = re.sub(r"[\r\n]+", "", str(e))
+        # if we get this error with HTTP, let's try HTTPS
+        if "'Connection aborted.', ConnectionResetError(54, 'Connection reset by peer')" in err_msg and proto == "http":
+            if verbose:
+                tqdm.write(f"  [{thread_id}] Trying HTTPS protocol after reset from HTTP connection")
+            if sleep_val > 0:
+                time.sleep(sleep_val)
+            try:
+                response = requests.get(f"https://{url.split('http://')[1]}", headers=headers, verify=False, allow_redirects=False, timeout=timeout)
+                if response.status_code // 100 in [1, 2, 3, 4, 5]:
+                    if (response.status_code // 100 == 3):
+                        # trim the 3xx location for display
+                        resp_loc = response.headers['Location']
+                        if len(resp_loc) > 100:
+                            resp_loc = f"{resp_loc[0:99]}..."
+                        tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port} ==> {resp_loc}")
+                    else:
+                        tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port}")
+                    result = TestResult(fqdn, ip, port, response)
+            except requests.exceptions.RequestException as e:
+                #tqdm.write(f"  [{thread_id}] RequestException: {e}")
+                None
         else:
-            None
+            if verbose:
+                err_msg = re.sub(r"[\r\n]+", "", str(e))
+                if "ConnectTimeoutError" in err_msg:
+                    tqdm.write(f"  [{thread_id}] RequestsException: Timeout / Retries Exceeded: {fqdn} / {ip} / {port}")
+                else:
+                    tqdm.write(f"  [{thread_id}] RequestsException: {err_msg}")
     except Exception as e:
         tqdm.write(f"  [{thread_id}] ERROR: {e}")
     if sleep_val > 0:
@@ -423,22 +463,22 @@ def main():
 
     ###########################
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description=textwrap.dedent(f'''{ascii_art}\n\n Origin IP Scanner developed with ChatGPT\n cha*os (n): complete disorder and confusion\n (ver: {__version__})'''), formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(description=f'''{ascii_art}\n\n Origin IP Scanner developed with ChatGPT\n cha*os (n): complete disorder and confusion\n (ver: {__version__})''', formatter_class=argparse.RawDescriptionHelpFormatter)
     parser._optionals.max_help_position = 70
-    parser.add_argument('-f', '--fqdn', type=argparse.FileType('r'), help='Path to FILE with FQDNs (one per line)', required=True)
-    parser.add_argument('-i', '--ip', type=str, help='IP address to send HTTP requests to (IP, comma-delimited IPs, and/or FILEs with IP/line)', required=True)
+    parser.add_argument('-f', '--fqdn', type=argparse.FileType('r'), help='Path to FQDN file (one FQDN per line)', required=True)
+    parser.add_argument('-i', '--ip', type=str, help='IP address(es) for HTTP requests (Comma-separated IPs, IP networks, and/or files with IP/network per line)', required=True)
     parser.add_argument('-a', '--agent', type=str, help='User-Agent header value for requests', default=f"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36 ch4*0s/{__version__}", required=False)
     parser.add_argument('-C', '--csv', action='store_true', help='Append CSV output to OUTPUT_FILE.csv')
-    parser.add_argument('-D', '--dns', action='store_true', help='Perform fwd/rev DNS lookups on FQDN/IP values prior to request; no impact to request action')
+    parser.add_argument('-D', '--dns', action='store_true', help='Perform fwd/rev DNS lookups on FQDN/IP values prior to request; no impact to testing queue')
     parser.add_argument('-j', '--jitter', type=validate_time_param, help='Add a 0-N second randomized delay to the sleep value', required=False)
-    parser.add_argument('-o', '--output', type=argparse.FileType('a'), help='Append text output to FILE')
+    parser.add_argument('-o', '--output', type=argparse.FileType('a'), help='Append console output to FILE')
     parser.add_argument('-p', '--ports', type=str, default='80,443', help='Comma-separated list of TCP ports to use (default: "80,443")')
     parser.add_argument('-P', '--no-prep', action='store_true', help='Do not pre-scan each IP/port with `GET /` using `Host: {IP:Port}` header to eliminate unresponsive hosts')
     parser.add_argument('-r', '--randomize', action='store_true', help="Randomize(ish) the order IPs/ports are tested")
-    parser.add_argument('-s', '--sleep', type=validate_time_param, help='Add N seconds between requests (per thread); int/dec down to 1ms', required=False)
-    parser.add_argument('-t', '--timeout', type=validate_time_param, help='timeout to use with requests', default=3)
-    parser.add_argument('-T', '--test', action='store_true', help="don't send requests")
-    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose mode')
+    parser.add_argument('-s', '--sleep', type=validate_time_param, help='Add N seconds before thread completes', required=False)
+    parser.add_argument('-t', '--timeout', type=validate_time_param, help='Wait N seconds for an unresponsive host', default=3)
+    parser.add_argument('-T', '--test', action='store_true', help="Test-mode; don't send requests")
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
     parser.add_argument('-x', '--singlethread', action='store_true', help='Single threaded execution; for 1-2 core systems; default threads=(cores-1) if cores>2')
     args = parser.parse_args()
 
@@ -503,7 +543,7 @@ def main():
     if len(ips) == 0:
         parser.error(f"No valid IP values found in IP parameter: {args.ip}")
     else:
-        logger.log(f"{len(ips)} IP addresses parsed from {args.ip}", 'DEBUG')
+        logger.log(f"{len(ips)} IP addresses parsed from '{args.ip}' := {ips}", 'DEBUG')
 
     ###########################
     # Validate TCP ports
@@ -627,15 +667,15 @@ def main():
                         prep_results.append(result)
                     pbar_prep.update(1)
             logger.log(f"{len(prep_results)} IP/ports verified, reducing test dataset from {len(tests_tbd)} entries")
-            #logger.log(f"prep_results := {', '.join(f'[{tst.ip}, {tst.port}, {tst.response}]' for tst in prep_results)}", 'DEBUG')
+            logger.log(f"prep_results := {', '.join(f'[{tst.ip}, {tst.port}, {tst.response}]' for tst in prep_results)}", 'DEBUG')
             # get the unique ip/port results from prep testing
             verified_hosts_set = set((result.ip, result.port) for result in prep_results)
             #logger.log(f"verified_hosts_set := {verified_hosts_set}", 'DEBUG')
             # rebuild tests_tbd with just the ips / ports discovered as live
             tests_tbd = [row for row in tests_tbd if (row.ip, row.port) in verified_hosts_set]
-            logger.log(f"{len(tests_tbd)} pending tests remain after pre-testing")            
+            logger.log(f"{len(tests_tbd)} pending tests remain after pre-testing")
 
-        #logger.log(f"tests_tbd := {', '.join(f'[{tst.ip}, {tst.port}, {tst.fqdn}]' for tst in tests_tbd)}", 'DEBUG')
+        logger.log(f"tests_tbd := {', '.join(f'[{tst.ip}, {tst.port}, {tst.fqdn}]' for tst in tests_tbd)}", 'DEBUG')
         random.shuffle(tests_tbd) if args.randomize else None
 
         total_tests = len(tests_tbd)
@@ -645,7 +685,7 @@ def main():
             for test in tests_tbd:
                 jitter_val = random.uniform(0, args.jitter) if args.jitter else 0
                 thread_id = random.choice(adjectives) + '_' + random.choice(nouns)
-                logger.log(f"  {thread_id} thread for {test.ip}:{test.port}", 'DEBUG')
+                logger.log(f"  {thread_id} thread for {test.ip}:{test.port} using host {test.fqdn}", 'DEBUG')
                 future_origins.append(executor.submit(thread_worker, test.ip, test.port, test.fqdn, args.agent, args.test, args.timeout, args.verbose, thread_id, float(sleep_val + jitter_val)))
             for future in as_completed(future_origins):
                 result = future.result() 
