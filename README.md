@@ -1,6 +1,8 @@
 # [chaos]()
 
-chaos is an 'origin' IP scanner developed by RST in collaboration with ChatGPT.  It is a niche utility with an intended audience of mostly penetration testers and bug hunters.  chaos was rapidly prototyped from idea to functional proof-of-concept in less than 24 hours using our principles of DevOps with ChatGPT.
+chaos is an 'origin' IP scanner developed by RST in collaboration with ChatGPT.  It is a niche utility with an intended audience of mostly penetration testers and bug hunters.  
+
+chaos was rapidly prototyped from idea to functional proof-of-concept in less than 24 hours using our principles of DevOps with ChatGPT.
 
     usage: chaos.py [-h] -f FQDN -i IP [-a AGENT] [-C] [-D] [-j JITTER] [-o OUTPUT] [-p PORTS] [-P] [-r] [-s SLEEP] [-t TIMEOUT] [-T] [-v] [-x]
     
@@ -46,13 +48,14 @@ chaos is an 'origin' IP scanner developed by RST in collaboration with ChatGPT. 
 1. Download / clone / unzip / whatever
 2. `cd path/to/chaos`
 3. `virtualenv env`
-4. `(env) pip3 install -U pip setuptools`
-5. `(env) pip3 install -U -r ./requirements.txt`
-6. `(env) ./chaos.py -h`
+4. `source env/bin/activate`
+5. `(env) pip3 install -U pip setuptools`
+6. `(env) pip3 install -U -r ./requirements.txt`
+7. `(env) ./chaos.py -h`
 
 # Options
       -h, --help            show this help message and exit
-      -f FQDN, --fqdn FQDN  Path to FILE with FQDNs (one per line)
+      -f FQDN, --fqdn FQDN  Path to FQDN file (one per line)
       -i IP, --ip IP        IP address to send HTTP requests to (IP, comma-delimited IPs, and/or FILEs with IP/line)
       -a AGENT, --agent AGENT
                             User-Agent header value for requests
