@@ -371,6 +371,8 @@ def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep
         headers.update({'User-Agent': agent})
     if test:
         return
+    if sleep_val > 0:
+        time.sleep(sleep_val) # sleep before/between requests
     try:
         response = requests.get(url, headers=headers, verify=False, allow_redirects=False, timeout=timeout)
         # any HTTP response is considered a result
@@ -409,8 +411,8 @@ def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep
             tqdm.write(f"  [prep-check] [{thread_id}] RequestException: {e}")
     except Exception as e:
         tqdm.write(f"  [prep-check] [{thread_id}] ERROR: {e}")
-    if sleep_val > 0:
-        time.sleep(sleep_val) # sleep between requests
+    #if sleep_val > 0:
+    #    time.sleep(sleep_val) # sleep between requests
     return result
 
 def notify_rslt(fqdn, ip, port, response):
@@ -444,6 +446,8 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
         headers.update({'User-Agent': agent})
     if test:
         return
+    if sleep_val > 0:
+        time.sleep(sleep_val) # sleep before/between requests
     try:
         response = requests.get(url, headers=headers, verify=False, allow_redirects=False, timeout=timeout)
         if response.status_code // 100 in [1, 2, 3, 4, 5]:
@@ -485,8 +489,8 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
             tqdm.write(f"  [{thread_id}] RequestException: {e}")
     except Exception as e:
         tqdm.write(f"  [{thread_id}] ERROR: {e}")
-    if sleep_val > 0:
-        time.sleep(sleep_val) # sleep between requests
+    #if sleep_val > 0:
+    #    time.sleep(sleep_val) # sleep between requests
     return result
 
 
