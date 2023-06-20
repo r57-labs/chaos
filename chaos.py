@@ -235,11 +235,11 @@ def parse_ip_param(param):
     logger.log(f"Starting network checks; tmp_ips := {tmp_ips}", 'DEBUG')
     # convert networks to ips
     for ip in tmp_ips:
-        logger.log(f"CIDR testing addr value {ip}", 'DEBUG')
+        logger.log(f"Testing value: {ip}", 'DEBUG')
         try:
             # test for CIDR
             network = ipaddress.ip_network(ip, strict=False)
-            logger.log(f"Addr value {ip} looks like a network, extending records", 'DEBUG')  
+            logger.log(f"Addr value {ip} parsed as ipaddress.ip_network(); extending records", 'DEBUG')  
             # also capture the network and broadcast addresses when pulling IPs from network
             valid_ips.append(str(network.network_address)) if "/" in ip else None
             valid_ips.extend([str(ip) for ip in network.hosts()])
@@ -412,6 +412,19 @@ def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep
         time.sleep(sleep_val) # sleep between requests
     return result
 
+def notify_rslt(fqdn, ip, port, response):
+    """
+    Output result info to screen using tqdm while thread_worker is running
+    """
+    if (response.status_code // 100 == 3):
+        # trim the 3xx location for display
+        resp_loc = response.headers['Location']
+        if len(resp_loc) > 100:
+            resp_loc = f"{resp_loc[0:99]}..."
+        tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port} ==> {resp_loc}")
+    else:
+        tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port}")
+
 def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, sleep_val):
     """
     Support threading for testing IP:PORT using FQDN in HTTP Host header
@@ -433,14 +446,7 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
     try:
         response = requests.get(url, headers=headers, verify=False, allow_redirects=False, timeout=timeout)
         if response.status_code // 100 in [1, 2, 3, 4, 5]:
-            if (response.status_code // 100 == 3):
-                # trim the 3xx location for display
-                resp_loc = response.headers['Location']
-                if len(resp_loc) > 100:
-                    resp_loc = f"{resp_loc[0:99]}..."
-                tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port} ==> {resp_loc}")
-            else:
-                tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port}")
+            notify_rslt(fqdn, ip, port, response)
             result = TestResult(fqdn, ip, port, response)
     except requests.exceptions.RequestException as e:
         err_msg = re.sub(r"[\r\n]+", "", str(e))
@@ -453,14 +459,7 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
             try:
                 response = requests.get(f"https://{url.split('http://')[1]}", headers=headers, verify=False, allow_redirects=False, timeout=timeout)
                 if response.status_code // 100 in [1, 2, 3, 4, 5]:
-                    if (response.status_code // 100 == 3):
-                        # trim the 3xx location for display
-                        resp_loc = response.headers['Location']
-                        if len(resp_loc) > 100:
-                            resp_loc = f"{resp_loc[0:99]}..."
-                        tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port} ==> {resp_loc}")
-                    else:
-                        tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port}")
+                    notify_rslt(fqdn, ip, port, response)
                     result = TestResult(fqdn, ip, port, response)
             except requests.exceptions.RequestException as e:
                 #tqdm.write(f"  [{thread_id}] RequestException: {e}")
@@ -473,6 +472,7 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
             try:
                 response = requests.get(f"http://{url.split('https://')[1]}", headers=headers, verify=False, allow_redirects=False, timeout=timeout)
                 if response.status_code // 100 in [1, 2, 3, 4, 5]:
+                    notify_rslt(fqdn, ip, port, response)
                     result = TestResult(fqdn, ip, port, response)
             except requests.exceptions.RequestException as e:
                 # ignore hosts that do not respond
