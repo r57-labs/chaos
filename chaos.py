@@ -166,6 +166,8 @@ class PrepResult:
         self.ip = ip
         self.port = port
         self.response = response
+    def __str__(self):
+        return f"IP: {self.ip}, Port: {self.port}, Status: {self.response.status_code}, Reason: {self.response.reason}"
 
 class TestResult:
     """
@@ -369,6 +371,8 @@ def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep
         headers.update({'User-Agent': agent})
     if test:
         return
+    if sleep_val > 0:
+        time.sleep(sleep_val) # sleep before/between requests
     try:
         response = requests.get(url, headers=headers, verify=False, allow_redirects=False, timeout=timeout)
         # any HTTP response is considered a result
@@ -407,8 +411,8 @@ def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep
             tqdm.write(f"  [prep-check] [{thread_id}] RequestException: {e}")
     except Exception as e:
         tqdm.write(f"  [prep-check] [{thread_id}] ERROR: {e}")
-    if sleep_val > 0:
-        time.sleep(sleep_val) # sleep between requests
+    #if sleep_val > 0:
+    #    time.sleep(sleep_val) # sleep between requests
     return result
 
 def notify_rslt(fqdn, ip, port, response):
@@ -442,6 +446,8 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
         headers.update({'User-Agent': agent})
     if test:
         return
+    if sleep_val > 0:
+        time.sleep(sleep_val) # sleep before/between requests
     try:
         response = requests.get(url, headers=headers, verify=False, allow_redirects=False, timeout=timeout)
         if response.status_code // 100 in [1, 2, 3, 4, 5]:
@@ -483,8 +489,8 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
             tqdm.write(f"  [{thread_id}] RequestException: {e}")
     except Exception as e:
         tqdm.write(f"  [{thread_id}] ERROR: {e}")
-    if sleep_val > 0:
-        time.sleep(sleep_val) # sleep between requests
+    #if sleep_val > 0:
+    #    time.sleep(sleep_val) # sleep between requests
     return result
 
 
@@ -697,6 +703,10 @@ def main():
                     result = future.result()
                     if result:
                         prep_results.append(result)
+                        # if we don't already have this IP as an FQDN in tests_tbd, then queue it so we can review those results vs others w/ real FQDNs
+                        if not any(t.ip == result.ip and t.port == result.port and t.fqdn == result.ip for t in tests_tbd):
+                            tqdm.write(f"  Adding prep test response to results with FQDN = IP for {result.ip}:{result.port}") if args.verbose else None
+                            results.append(TestResult(result.ip, result.ip, result.port, result.response))
                     pbar_prep.update(1)
             logger.log(f"{len(prep_results)} IP/ports verified, reducing test dataset from {len(tests_tbd)} entries")
             logger.log(f"prep_results := {', '.join(f'[{tst.ip}, {tst.port}, {tst.response}]' for tst in prep_results)}", 'DEBUG')
@@ -762,10 +772,19 @@ def main():
                         csv_first_row = False
         # prep and display summary of results
         for fqdn, results in fqdn_results.items():
-            rslt_output += f"    {fqdn}\n"
+            rslt_output += f"  {fqdn}\n"
             for r in results:
-                rslt_output += f"        {r.ip}:{r.port} => ({r.response.status_code} / {r.response.reason})\n"
-        logger.log(f"{len(results)} results found:\n{rslt_output}", 'RSLT')
+                if (r.response.status_code // 100 == 3):
+                    # trim the 3xx location for display
+                    resp_loc = r.response.headers['Location']
+                    if len(resp_loc) > 100:
+                        resp_loc = f"{resp_loc[0:99]}..."
+                    rslt_output += f"    {r.ip}:{r.port} => ({r.response.status_code} / {r.response.reason}) ==> {resp_loc}\n"
+                else:
+                    rslt_output += f"    {r.ip}:{r.port} => ({r.response.status_code} / {r.response.reason})\n"
+            rslt_output += "\n"
+        logger.log(f"Results from {len(fqdn_results.items())} FQDNs:\n{rslt_output}", 'RSLT')
+
 if __name__ == "__main__":
     main()
 
