@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed # threads!
 from tld import get_tld						# validate FQDNs without regex
 from tqdm import tqdm                                           # progress bar?!
 
-__version__ = '0.9.3'
+__version__ = '0.9.4'
 
 ascii_art = r'''
          _..._
@@ -235,11 +235,11 @@ def parse_ip_param(param):
     logger.log(f"Starting network checks; tmp_ips := {tmp_ips}", 'DEBUG')
     # convert networks to ips
     for ip in tmp_ips:
-        logger.log(f"CIDR testing addr value {ip}", 'DEBUG')
+        logger.log(f"Testing value: {ip}", 'DEBUG')
         try:
             # test for CIDR
             network = ipaddress.ip_network(ip, strict=False)
-            logger.log(f"Addr value {ip} looks like a network, extending records", 'DEBUG')  
+            logger.log(f"Addr value {ip} parsed as ipaddress.ip_network(); extending records", 'DEBUG')  
             # also capture the network and broadcast addresses when pulling IPs from network
             valid_ips.append(str(network.network_address)) if "/" in ip else None
             valid_ips.extend([str(ip) for ip in network.hosts()])
@@ -357,6 +357,7 @@ def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep
     result = None
     proto = "http"
     # TBD: implement a better SSL/TLS protocol check
+    #      it may be getting 'better', but it's a kludge/cluster
     if port == '443' or re.match('.*443.*', port):
         proto = 'https'
     if looks_ipv6(ip):
@@ -375,7 +376,7 @@ def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep
             result = PrepResult(ip, port, response)
     except requests.exceptions.RequestException as e:
         err_msg = re.sub(r"[\r\n]+", "", str(e))
-        if "'Connection aborted.', ConnectionResetError(54, 'Connection reset by peer')" in err_msg and proto == "http":
+        if "connection reset by peer" in err_msg.lower() and proto == "http":
             if verbose:
                 tqdm.write(f"  [prep-check] [{thread_id}] Trying HTTPS protocol after reset from HTTP connection")
             if sleep_val > 0:
@@ -387,12 +388,41 @@ def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep
             except requests.exceptions.RequestException as e:
                 # ignore hosts that do not respond
                 None
+        elif "caused by sslerror" in err_msg.lower() and proto == "https":
+            if verbose:
+                tqdm.write(f"  [prep-check] [{thread_id}] Trying HTTP protocol after SSLError from HTTPS connection")
+            if sleep_val > 0:
+                time.sleep(sleep_val)
+            try:
+                response = requests.get(f"http://{url.split('https://')[1]}", headers=headers, verify=False, allow_redirects=False, timeout=timeout)
+                if response.status_code // 100 in [1, 2, 3, 4, 5]:
+                    result = PrepResult(ip, port, response)
+            except requests.exceptions.RequestException as e:
+                # ignore hosts that do not respond
+                None
+        elif "retries exceeded" in err_msg.lower() and any(err_str in err_msg for err_str in ["ConnectTimeoutError", "NewConnectionError"]):
+            # ignore hosts that do not respond
+            None
+        else:
+            tqdm.write(f"  [prep-check] [{thread_id}] RequestException: {e}")
     except Exception as e:
-        if verbose:
-            tqdm.write(f"  [prep-check] [{thread_id}] ERROR: {e}")
+        tqdm.write(f"  [prep-check] [{thread_id}] ERROR: {e}")
     if sleep_val > 0:
         time.sleep(sleep_val) # sleep between requests
     return result
+
+def notify_rslt(fqdn, ip, port, response):
+    """
+    Output result info to screen using tqdm while thread_worker is running
+    """
+    if (response.status_code // 100 == 3):
+        # trim the 3xx location for display
+        resp_loc = response.headers['Location']
+        if len(resp_loc) > 100:
+            resp_loc = f"{resp_loc[0:99]}..."
+        tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port} ==> {resp_loc}")
+    else:
+        tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port}")
 
 def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, sleep_val):
     """
@@ -415,19 +445,12 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
     try:
         response = requests.get(url, headers=headers, verify=False, allow_redirects=False, timeout=timeout)
         if response.status_code // 100 in [1, 2, 3, 4, 5]:
-            if (response.status_code // 100 == 3):
-                # trim the 3xx location for display
-                resp_loc = response.headers['Location']
-                if len(resp_loc) > 100:
-                    resp_loc = f"{resp_loc[0:99]}..."
-                tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port} ==> {resp_loc}")
-            else:
-                tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port}")
+            notify_rslt(fqdn, ip, port, response)
             result = TestResult(fqdn, ip, port, response)
     except requests.exceptions.RequestException as e:
         err_msg = re.sub(r"[\r\n]+", "", str(e))
         # if we get this error with HTTP, let's try HTTPS
-        if "'Connection aborted.', ConnectionResetError(54, 'Connection reset by peer')" in err_msg and proto == "http":
+        if "connection reset by peer" in err_msg.lower() and proto == "http":
             if verbose:
                 tqdm.write(f"  [{thread_id}] Trying HTTPS protocol after reset from HTTP connection")
             if sleep_val > 0:
@@ -435,25 +458,29 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
             try:
                 response = requests.get(f"https://{url.split('http://')[1]}", headers=headers, verify=False, allow_redirects=False, timeout=timeout)
                 if response.status_code // 100 in [1, 2, 3, 4, 5]:
-                    if (response.status_code // 100 == 3):
-                        # trim the 3xx location for display
-                        resp_loc = response.headers['Location']
-                        if len(resp_loc) > 100:
-                            resp_loc = f"{resp_loc[0:99]}..."
-                        tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port} ==> {resp_loc}")
-                    else:
-                        tqdm.write(f"  \033[92m++RCVD++\033[0m ({response.status_code} {response.reason}) {fqdn} @ {ip}:{port}")
+                    notify_rslt(fqdn, ip, port, response)
                     result = TestResult(fqdn, ip, port, response)
             except requests.exceptions.RequestException as e:
-                #tqdm.write(f"  [{thread_id}] RequestException: {e}")
+                # ignore hosts that do not respond
                 None
-        else:
+        elif "caused by sslerror" in err_msg.lower() and proto == "https":
             if verbose:
-                err_msg = re.sub(r"[\r\n]+", "", str(e))
-                if "ConnectTimeoutError" in err_msg:
-                    tqdm.write(f"  [{thread_id}] RequestsException: Timeout / Retries Exceeded: {fqdn} / {ip} / {port}")
-                else:
-                    tqdm.write(f"  [{thread_id}] RequestsException: {err_msg}")
+                tqdm.write(f"  [{thread_id}] Trying HTTP protocol after SSLError from HTTPS connection")
+            if sleep_val > 0:
+                time.sleep(sleep_val)
+            try:
+                response = requests.get(f"http://{url.split('https://')[1]}", headers=headers, verify=False, allow_redirects=False, timeout=timeout)
+                if response.status_code // 100 in [1, 2, 3, 4, 5]:
+                    notify_rslt(fqdn, ip, port, response)
+                    result = TestResult(fqdn, ip, port, response)
+            except requests.exceptions.RequestException as e:
+                # ignore hosts that do not respond
+                None
+        elif "retries exceeded" in err_msg.lower() and any(err_str in err_msg for err_str in ["ConnectTimeoutError", "NewConnectionError"]):
+            # ignore hosts that do not respond
+            None
+        else:
+            tqdm.write(f"  [{thread_id}] RequestException: {e}")
     except Exception as e:
         tqdm.write(f"  [{thread_id}] ERROR: {e}")
     if sleep_val > 0:
@@ -462,6 +489,8 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
 
 
 
+############################################################################################
+## MAIN
 def main():
 
     ###########################
@@ -700,12 +729,14 @@ def main():
     if len(results) == 0:
         logger.log("No Results", 'WARN')
     else:
-        logger.log(f"{len(results)} results found:")
+        fqdn_results = {}
+        rslt_output = ""
         current_date = datetime.datetime.utcnow()
         csv_first_row = True
         for rslt in results:
-            # TBD: improve displayed output results
-            logger.log(f"{rslt.fqdn} / {rslt.ip} / {rslt.port} / {rslt.response.status_code} / {rslt.response.reason}", 'RSLT')
+            # group results by FDQN (per robotic advice)
+            fqdn_results.setdefault(rslt.fqdn, []).append(rslt)
+            # handle CSV output
             if args.csv:
                 with open(csv_file, mode='a', newline='') as csv_output_file:
                     csv_writer = csv.writer(csv_output_file)
@@ -727,10 +758,14 @@ def main():
                         for name, value in rslt.response.headers.items():
                             header_str += f"{name}: {value}{delimiter}"
                         header_str = header_str.rstrip(delimiter)
-                        #csv_writer.writerow([rslt[0][0], rslt[0][1], rslt[0][2], rslt[0][3].status_code, rslt[0][3].reason, header_str, get_response_content_summary(rslt[0][3])])
                         csv_writer.writerow([rslt.fqdn, rslt.ip, rslt.port, rslt.response.status_code, rslt.response.reason, header_str, get_response_content_summary(rslt.response)])
                         csv_first_row = False
-
+        # prep and display summary of results
+        for fqdn, results in fqdn_results.items():
+            rslt_output += f"    {fqdn}\n"
+            for r in results:
+                rslt_output += f"        {r.ip}:{r.port} => ({r.response.status_code} / {r.response.reason})\n"
+        logger.log(f"{len(results)} results found:\n{rslt_output}", 'RSLT')
 if __name__ == "__main__":
     main()
 
