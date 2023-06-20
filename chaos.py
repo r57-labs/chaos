@@ -731,12 +731,16 @@ def main():
     if len(results) == 0:
         logger.log("No Results", 'WARN')
     else:
-        logger.log(f"{len(results)} results found:")
+        #logger.log(f"{len(results)} results found:")
+        fqdn_results = {}
+        rslt_output = ""
         current_date = datetime.datetime.utcnow()
         csv_first_row = True
         for rslt in results:
             # TBD: improve displayed output results
-            logger.log(f"{rslt.fqdn} / {rslt.ip} / {rslt.port} / {rslt.response.status_code} / {rslt.response.reason}", 'RSLT')
+            #logger.log(f"{rslt.fqdn} / {rslt.ip} / {rslt.port} / {rslt.response.status_code} / {rslt.response.reason}", 'RSLT')
+            # group results by FDQN (per robotic advice)
+            fqdn_results.setdefault(rslt.fqdn, []).append(rslt)
             if args.csv:
                 with open(csv_file, mode='a', newline='') as csv_output_file:
                     csv_writer = csv.writer(csv_output_file)
@@ -761,7 +765,11 @@ def main():
                         #csv_writer.writerow([rslt[0][0], rslt[0][1], rslt[0][2], rslt[0][3].status_code, rslt[0][3].reason, header_str, get_response_content_summary(rslt[0][3])])
                         csv_writer.writerow([rslt.fqdn, rslt.ip, rslt.port, rslt.response.status_code, rslt.response.reason, header_str, get_response_content_summary(rslt.response)])
                         csv_first_row = False
-
+        for fqdn, results in fqdn_results.items():
+            rslt_output += f"    {fqdn}\n"
+            for r in results:
+                rslt_output += f"        {r.ip}:{r.port} => ({r.response.status_code} / {r.response.reason})\n"
+        logger.log(f"{len(results)} results found:\n{rslt_output}", 'RSLT')
 if __name__ == "__main__":
     main()
 
