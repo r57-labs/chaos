@@ -404,7 +404,7 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
         url = f"{proto}://[{ip}]:{port}/"
     else:
         url = f"{proto}://{ip}:{port}/"
-    headers = {'Host': f"{ip}:{port}"}
+    headers = {'Host': f"{fqdn}"}
     if agent:
         headers.update({'User-Agent': agent})
     if test:
