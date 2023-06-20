@@ -701,8 +701,6 @@ def main():
                         prep_results.append(result)
                         # if we don't already have this IP as an FQDN in tests_tbd, then queue it so we can review those results vs others w/ real FQDNs
                         if not any(t.ip == result.ip and t.port == result.port and t.fqdn == result.ip for t in tests_tbd):
-                            #tqdm.write(f"  Adding prep result to testing queue with FQDN = IP for {result.ip}:{result.port}") if args.verbose else None
-                            #tests_tbd.append(TestTarget(result.ip, result.port, result.ip))
                             tqdm.write(f"  Adding prep test response to results with FQDN = IP for {result.ip}:{result.port}") if args.verbose else None
                             results.append(TestResult(result.ip, result.ip, result.port, result.response))
                     pbar_prep.update(1)
