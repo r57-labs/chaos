@@ -235,15 +235,18 @@ def parse_ip_param(param):
     logger.log(f"Starting network checks; tmp_ips := {tmp_ips}", 'DEBUG')
     # convert networks to ips
     for ip in tmp_ips:
+        logger.log(f"CIDR testing addr value {ip}", 'DEBUG')
         try:
             # test for CIDR
-            network = ipaddress.ip_network(ip, strict=False)  
+            network = ipaddress.ip_network(ip, strict=False)
+            logger.log(f"Addr value {ip} looks like a network, extending records", 'DEBUG')  
             # also capture the network and broadcast addresses when pulling IPs from network
             valid_ips.append(str(network.network_address)) if "/" in ip else None
             valid_ips.extend([str(ip) for ip in network.hosts()])
             valid_ips.append(str(network.broadcast_address)) if "/" in ip else None
         except ValueError as ve:
             # on error assume it's ipv4/ipv6
+            logger.log(f"IPv4/IPv6 testing addr value {ip}", 'DEBUG')
             try:
                 ip = ipaddress.ip_address(ip) 
                 valid_ips.append(str(ip))
