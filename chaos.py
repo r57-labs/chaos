@@ -406,8 +406,7 @@ def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep
         else:
             tqdm.write(f"  [prep-check] [{thread_id}] RequestException: {e}")
     except Exception as e:
-        if verbose:
-            tqdm.write(f"  [prep-check] [{thread_id}] ERROR: {e}")
+        tqdm.write(f"  [prep-check] [{thread_id}] ERROR: {e}")
     if sleep_val > 0:
         time.sleep(sleep_val) # sleep between requests
     return result
@@ -462,7 +461,7 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
                     notify_rslt(fqdn, ip, port, response)
                     result = TestResult(fqdn, ip, port, response)
             except requests.exceptions.RequestException as e:
-                #tqdm.write(f"  [{thread_id}] RequestException: {e}")
+                # ignore hosts that do not respond
                 None
         elif "caused by sslerror" in err_msg.lower() and proto == "https":
             if verbose:
@@ -481,8 +480,7 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
             # ignore hosts that do not respond
             None
         else:
-            if verbose:
-                tqdm.write(f"  [{thread_id}] RequestException: {e}")
+            tqdm.write(f"  [{thread_id}] RequestException: {e}")
     except Exception as e:
         tqdm.write(f"  [{thread_id}] ERROR: {e}")
     if sleep_val > 0:
@@ -731,16 +729,14 @@ def main():
     if len(results) == 0:
         logger.log("No Results", 'WARN')
     else:
-        #logger.log(f"{len(results)} results found:")
         fqdn_results = {}
         rslt_output = ""
         current_date = datetime.datetime.utcnow()
         csv_first_row = True
         for rslt in results:
-            # TBD: improve displayed output results
-            #logger.log(f"{rslt.fqdn} / {rslt.ip} / {rslt.port} / {rslt.response.status_code} / {rslt.response.reason}", 'RSLT')
             # group results by FDQN (per robotic advice)
             fqdn_results.setdefault(rslt.fqdn, []).append(rslt)
+            # handle CSV output
             if args.csv:
                 with open(csv_file, mode='a', newline='') as csv_output_file:
                     csv_writer = csv.writer(csv_output_file)
@@ -762,9 +758,9 @@ def main():
                         for name, value in rslt.response.headers.items():
                             header_str += f"{name}: {value}{delimiter}"
                         header_str = header_str.rstrip(delimiter)
-                        #csv_writer.writerow([rslt[0][0], rslt[0][1], rslt[0][2], rslt[0][3].status_code, rslt[0][3].reason, header_str, get_response_content_summary(rslt[0][3])])
                         csv_writer.writerow([rslt.fqdn, rslt.ip, rslt.port, rslt.response.status_code, rslt.response.reason, header_str, get_response_content_summary(rslt.response)])
                         csv_first_row = False
+        # prep and display summary of results
         for fqdn, results in fqdn_results.items():
             rslt_output += f"    {fqdn}\n"
             for r in results:
