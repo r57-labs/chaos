@@ -166,6 +166,8 @@ class PrepResult:
         self.ip = ip
         self.port = port
         self.response = response
+    def __str__(self):
+        return f"IP: {self.ip}, Port: {self.port}, Status: {self.response.status_code}, Reason: {self.response.reason}"
 
 class TestResult:
     """
@@ -697,6 +699,10 @@ def main():
                     result = future.result()
                     if result:
                         prep_results.append(result)
+                        # if we don't already have this IP as an FQDN in tests_tbd, then queue it so we can review those results vs others w/ real FQDNs
+                        if not any(t.ip == result.ip and t.port == result.port and t.fqdn == result.ip for t in tests_tbd):
+                            tqdm.write(f"  Adding prep result to testing queue with FQDN = IP for {result.ip}:{result.port}") if args.verbose else None
+                            tests_tbd.append(TestTarget(result.ip, result.port, result.ip))
                     pbar_prep.update(1)
             logger.log(f"{len(prep_results)} IP/ports verified, reducing test dataset from {len(tests_tbd)} entries")
             logger.log(f"prep_results := {', '.join(f'[{tst.ip}, {tst.port}, {tst.response}]' for tst in prep_results)}", 'DEBUG')
@@ -765,7 +771,8 @@ def main():
             rslt_output += f"    {fqdn}\n"
             for r in results:
                 rslt_output += f"        {r.ip}:{r.port} => ({r.response.status_code} / {r.response.reason})\n"
-        logger.log(f"{len(results)} results found:\n{rslt_output}", 'RSLT')
+        #logger.log(f"{len(results)} results found:\n{rslt_output}", 'RSLT')
+        logger.log(f"Results from {len(fqdn_results.items())} FQDN values:\n{rslt_output}", 'RSLT')
 if __name__ == "__main__":
     main()
 
