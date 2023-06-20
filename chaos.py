@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed # threads!
 from tld import get_tld						# validate FQDNs without regex
 from tqdm import tqdm                                           # progress bar?!
 
-__version__ = '0.9.3'
+__version__ = '0.9.4'
 
 ascii_art = r'''
          _..._
@@ -357,6 +357,7 @@ def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep
     result = None
     proto = "http"
     # TBD: implement a better SSL/TLS protocol check
+    #      it may be getting 'better', but it's a kludge/cluster
     if port == '443' or re.match('.*443.*', port):
         proto = 'https'
     if looks_ipv6(ip):
@@ -375,7 +376,7 @@ def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep
             result = PrepResult(ip, port, response)
     except requests.exceptions.RequestException as e:
         err_msg = re.sub(r"[\r\n]+", "", str(e))
-        if "'Connection aborted.', ConnectionResetError(54, 'Connection reset by peer')" in err_msg and proto == "http":
+        if "connection reset by peer" in err_msg.lower() and proto == "http":
             if verbose:
                 tqdm.write(f"  [prep-check] [{thread_id}] Trying HTTPS protocol after reset from HTTP connection")
             if sleep_val > 0:
@@ -387,6 +388,23 @@ def prep_thread_worker(ip, port, agent, test, timeout, verbose, thread_id, sleep
             except requests.exceptions.RequestException as e:
                 # ignore hosts that do not respond
                 None
+        elif "caused by sslerror" in err_msg.lower() and proto == "https":
+            if verbose:
+                tqdm.write(f"  [prep-check] [{thread_id}] Trying HTTP protocol after SSLError from HTTPS connection")
+            if sleep_val > 0:
+                time.sleep(sleep_val)
+            try:
+                response = requests.get(f"http://{url.split('https://')[1]}", headers=headers, verify=False, allow_redirects=False, timeout=timeout)
+                if response.status_code // 100 in [1, 2, 3, 4, 5]:
+                    result = PrepResult(ip, port, response)
+            except requests.exceptions.RequestException as e:
+                # ignore hosts that do not respond
+                None
+        elif "retries exceeded" in err_msg.lower() and any(err_str in err_msg for err_str in ["ConnectTimeoutError", "NewConnectionError"]):
+            # ignore hosts that do not respond
+            None
+        else:
+            tqdm.write(f"  [prep-check] [{thread_id}] RequestException: {e}")
     except Exception as e:
         if verbose:
             tqdm.write(f"  [prep-check] [{thread_id}] ERROR: {e}")
@@ -427,7 +445,7 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
     except requests.exceptions.RequestException as e:
         err_msg = re.sub(r"[\r\n]+", "", str(e))
         # if we get this error with HTTP, let's try HTTPS
-        if "'Connection aborted.', ConnectionResetError(54, 'Connection reset by peer')" in err_msg and proto == "http":
+        if "connection reset by peer" in err_msg.lower() and proto == "http":
             if verbose:
                 tqdm.write(f"  [{thread_id}] Trying HTTPS protocol after reset from HTTP connection")
             if sleep_val > 0:
@@ -447,13 +465,24 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
             except requests.exceptions.RequestException as e:
                 #tqdm.write(f"  [{thread_id}] RequestException: {e}")
                 None
+        elif "caused by sslerror" in err_msg.lower() and proto == "https":
+            if verbose:
+                tqdm.write(f"  [{thread_id}] Trying HTTP protocol after SSLError from HTTPS connection")
+            if sleep_val > 0:
+                time.sleep(sleep_val)
+            try:
+                response = requests.get(f"http://{url.split('https://')[1]}", headers=headers, verify=False, allow_redirects=False, timeout=timeout)
+                if response.status_code // 100 in [1, 2, 3, 4, 5]:
+                    result = TestResult(fqdn, ip, port, response)
+            except requests.exceptions.RequestException as e:
+                # ignore hosts that do not respond
+                None
+        elif "retries exceeded" in err_msg.lower() and any(err_str in err_msg for err_str in ["ConnectTimeoutError", "NewConnectionError"]):
+            # ignore hosts that do not respond
+            None
         else:
             if verbose:
-                err_msg = re.sub(r"[\r\n]+", "", str(e))
-                if "ConnectTimeoutError" in err_msg:
-                    tqdm.write(f"  [{thread_id}] RequestsException: Timeout / Retries Exceeded: {fqdn} / {ip} / {port}")
-                else:
-                    tqdm.write(f"  [{thread_id}] RequestsException: {err_msg}")
+                tqdm.write(f"  [{thread_id}] RequestException: {e}")
     except Exception as e:
         tqdm.write(f"  [{thread_id}] ERROR: {e}")
     if sleep_val > 0:
@@ -462,6 +491,8 @@ def thread_worker(ip, port, fqdn, agent, test, timeout, verbose, thread_id, slee
 
 
 
+############################################################################################
+## MAIN
 def main():
 
     ###########################
