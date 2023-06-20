@@ -701,8 +701,10 @@ def main():
                         prep_results.append(result)
                         # if we don't already have this IP as an FQDN in tests_tbd, then queue it so we can review those results vs others w/ real FQDNs
                         if not any(t.ip == result.ip and t.port == result.port and t.fqdn == result.ip for t in tests_tbd):
-                            tqdm.write(f"  Adding prep result to testing queue with FQDN = IP for {result.ip}:{result.port}") if args.verbose else None
-                            tests_tbd.append(TestTarget(result.ip, result.port, result.ip))
+                            #tqdm.write(f"  Adding prep result to testing queue with FQDN = IP for {result.ip}:{result.port}") if args.verbose else None
+                            #tests_tbd.append(TestTarget(result.ip, result.port, result.ip))
+                            tqdm.write(f"  Adding prep test response to results with FQDN = IP for {result.ip}:{result.port}") if args.verbose else None
+                            results.append(TestResult(result.ip, result.ip, result.port, result.response))
                     pbar_prep.update(1)
             logger.log(f"{len(prep_results)} IP/ports verified, reducing test dataset from {len(tests_tbd)} entries")
             logger.log(f"prep_results := {', '.join(f'[{tst.ip}, {tst.port}, {tst.response}]' for tst in prep_results)}", 'DEBUG')
@@ -768,11 +770,19 @@ def main():
                         csv_first_row = False
         # prep and display summary of results
         for fqdn, results in fqdn_results.items():
-            rslt_output += f"    {fqdn}\n"
+            rslt_output += f"  {fqdn}\n"
             for r in results:
-                rslt_output += f"        {r.ip}:{r.port} => ({r.response.status_code} / {r.response.reason})\n"
-        #logger.log(f"{len(results)} results found:\n{rslt_output}", 'RSLT')
-        logger.log(f"Results from {len(fqdn_results.items())} FQDN values:\n{rslt_output}", 'RSLT')
+                if (r.response.status_code // 100 == 3):
+                    # trim the 3xx location for display
+                    resp_loc = r.response.headers['Location']
+                    if len(resp_loc) > 100:
+                        resp_loc = f"{resp_loc[0:99]}..."
+                    rslt_output += f"    {r.ip}:{r.port} => ({r.response.status_code} / {r.response.reason}) ==> {resp_loc}\n"
+                else:
+                    rslt_output += f"    {r.ip}:{r.port} => ({r.response.status_code} / {r.response.reason})\n"
+            rslt_output += "\n"
+        logger.log(f"Results from {len(fqdn_results.items())} FQDNs:\n{rslt_output}", 'RSLT')
+
 if __name__ == "__main__":
     main()
 
