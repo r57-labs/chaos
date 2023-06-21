@@ -133,57 +133,89 @@ Run the scan
   
 ![test_local](https://github.com/r57-labs/chaos/assets/134399975/bb767838-b463-4c75-8643-d552d3e9f96c)
 
-    % ./chaos.py -f ../test_localhost_fqdn.txt -i ../test_localhost_ips.txt,::1/126 -p 8001,8443,8444 -x -s0.2 -t1
-    2023-06-21 08:18:54 [WARN] Ignoring invalid FQDN value: localhost.local
-    2023-06-21 08:18:54 [WARN] Ignoring invalid FQDN value: localhost
-    2023-06-21 08:18:54 [WARN] Ignoring invalid FQDN value: notreally.arealdomain
-    2023-06-21 08:18:54 [WARN] Error: invalid IP address or CIDR block not_an_ip_addr
-    2023-06-21 08:18:54 [WARN] Error: invalid IP address or CIDR block =4.2
-    2023-06-21 08:18:54 [WARN] Error: invalid IP address or CIDR block -6.a
-    2023-06-21 08:18:54 [INFO] * ---- <META> ---- *
-    2023-06-21 08:18:54 [INFO] * Version: 0.9.4
-    2023-06-21 08:18:54 [INFO] * FQDN file: ../test_localhost_fqdn.txt
-    2023-06-21 08:18:54 [INFO] * FQDNs loaded: ['www.example.com', 'localhost.example.com']
-    2023-06-21 08:18:54 [INFO] * IP input value(s): ../test_localhost_ips.txt,::1/126
-    2023-06-21 08:18:54 [INFO] * Addresses parsed from IP inputs: 12
-    2023-06-21 08:18:54 [INFO] * Port(s): 8001,8443,8444
-    2023-06-21 08:18:54 [INFO] * Thread(s): 1
-    2023-06-21 08:18:54 [INFO] * Sleep value: 0.2
-    2023-06-21 08:18:54 [INFO] * Timeout: 1.0
-    2023-06-21 08:18:54 [INFO] * User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36 ch4*0s/0.9.4
-    2023-06-21 08:18:54 [INFO] * ---- </META> ---- *
-    2023-06-21 08:18:54 [INFO] 36 unique address/port addresses for testing
-    Prep Tests: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 36/36 [00:29<00:00,  1.23it/s]
-    2023-06-21 08:19:23 [INFO] 3 IP/ports verified, reducing test dataset from 72 entries
-    2023-06-21 08:19:23 [INFO] 6 pending tests remain after pre-testing
-    2023-06-21 08:19:23 [INFO] Queuing 6 threads
-      ++RCVD++ (204 Plaintext OK) www.example.com @ ::1:8443
-      ++RCVD++ (204 Plaintext OK) www.example.com @ 127.0.0.1:8443
-      ++RCVD++ (204 Plaintext OK) www.example.com @ :::8443
-      ++RCVD++ (204 Plaintext OK) localhost.example.com @ ::1:8443
-      ++RCVD++ (204 Plaintext OK) localhost.example.com @ 127.0.0.1:8443
-      ++RCVD++ (204 Plaintext OK) localhost.example.com @ :::8443
-    Origin Scan: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 6/6 [00:02<00:00,  2.26it/s]
-    2023-06-21 08:19:26 [RSLT] Results from 5 FQDNs:
+    % ./chaos.py -f ../test_localhost_fqdn.txt -i ../test_localhost_ips.txt,::1/126 -p 8001,8443,8444 -x -s0.2 -t1   
+    2023-06-21 12:48:33 [WARN] Ignoring invalid FQDN value: localhost.local
+    2023-06-21 12:48:33 [WARN] Ignoring invalid FQDN value: localhost
+    2023-06-21 12:48:33 [WARN] Ignoring invalid FQDN value: notreally.arealdomain
+    2023-06-21 12:48:33 [WARN] Error: invalid IP address or CIDR block =4.2
+    2023-06-21 12:48:33 [WARN] Error: invalid IP address or CIDR block -6.a
+    2023-06-21 12:48:33 [WARN] Error: invalid IP address or CIDR block not_an_ip_addr
+    2023-06-21 12:48:33 [INFO] * ---- <META> ---- *
+    2023-06-21 12:48:33 [INFO] * Version: 0.9.4
+    2023-06-21 12:48:33 [INFO] * FQDN file: ../test_localhost_fqdn.txt
+    2023-06-21 12:48:33 [INFO] * FQDNs loaded: ['www.example.com', 'localhost.example.com']
+    2023-06-21 12:48:33 [INFO] * IP input value(s): ../test_localhost_ips.txt,::1/126
+    2023-06-21 12:48:33 [INFO] * Addresses parsed from IP inputs: 12
+    2023-06-21 12:48:33 [INFO] * Port(s): 8001,8443,8444
+    2023-06-21 12:48:33 [INFO] * Thread(s): 1
+    2023-06-21 12:48:33 [INFO] * Sleep value: 0.2
+    2023-06-21 12:48:33 [INFO] * Timeout: 1.0
+    2023-06-21 12:48:33 [INFO] * User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36 ch4*0s/0.9.4
+    2023-06-21 12:48:33 [INFO] * ---- </META> ---- *
+    2023-06-21 12:48:33 [INFO] 36 unique address/port addresses for testing
+    Prep Tests: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 36/36 [00:29<00:00,  1.20it/s]
+    2023-06-21 12:49:03 [INFO] 9 IP/ports verified, reducing test dataset from 72 entries
+    2023-06-21 12:49:03 [INFO] 18 pending tests remain after pre-testing
+    2023-06-21 12:49:03 [INFO] Queuing 18 threads
+      ++RCVD++ (200 OK) www.example.com @ :::8001                                                                                                                                                    
+      ++RCVD++ (204 Plaintext OK) www.example.com @ :::8443                                                                                                                                          
+      ++RCVD++ (202 OK) www.example.com @ :::8444                                                                                                                                                    
+      ++RCVD++ (200 OK) www.example.com @ ::1:8001                                                                                                                                                   
+      ++RCVD++ (204 Plaintext OK) www.example.com @ ::1:8443                                                                                                                                         
+      ++RCVD++ (202 OK) www.example.com @ ::1:8444                                                                                                                                                   
+      ++RCVD++ (200 OK) www.example.com @ 127.0.0.1:8001                                                                                                                                             
+      ++RCVD++ (204 Plaintext OK) www.example.com @ 127.0.0.1:8443                                                                                                                                   
+      ++RCVD++ (202 OK) www.example.com @ 127.0.0.1:8444                                                                                                                                             
+      ++RCVD++ (200 OK) localhost.example.com @ :::8001                                                                                                                                              
+      ++RCVD++ (204 Plaintext OK) localhost.example.com @ :::8443                                                                                                                                    
+      ++RCVD++ (202 OK) localhost.example.com @ :::8444                                                                                                                                              
+      ++RCVD++ (200 OK) localhost.example.com @ ::1:8001                                                                                                                                             
+      ++RCVD++ (204 Plaintext OK) localhost.example.com @ ::1:8443                                                                                                                                   
+      ++RCVD++ (202 OK) localhost.example.com @ ::1:8444                                                                                                                                             
+      ++RCVD++ (200 OK) localhost.example.com @ 127.0.0.1:8001                                                                                                                                       
+      ++RCVD++ (204 Plaintext OK) localhost.example.com @ 127.0.0.1:8443                                                                                                                             
+      ++RCVD++ (202 OK) localhost.example.com @ 127.0.0.1:8444                                                                                                                                       
+    Origin Scan: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 18/18 [00:06<00:00,  2.76it/s]
+    2023-06-21 12:49:09 [RSLT] Results from 5 FQDNs:
       ::1
+        ::1:8444 => (202 / OK)
         ::1:8443 => (204 / Plaintext OK)
-
-      127.0.0.1
-        127.0.0.1:8443 => (204 / Plaintext OK)
-
-      ::
-        :::8443 => (204 / Plaintext OK)
-
-      www.example.com
-        ::1:8443 => (204 / Plaintext OK)
-        127.0.0.1:8443 => (204 / Plaintext OK)
-        :::8443 => (204 / Plaintext OK)
-
-      localhost.example.com
-        ::1:8443 => (204 / Plaintext OK)
-        127.0.0.1:8443 => (204 / Plaintext OK)
-        :::8443 => (204 / Plaintext OK)
+        ::1:8001 => (200 / OK)
     
+      127.0.0.1
+        127.0.0.1:8001 => (200 / OK)
+        127.0.0.1:8443 => (204 / Plaintext OK)
+        127.0.0.1:8444 => (202 / OK)
+    
+      ::
+        :::8001 => (200 / OK)
+        :::8443 => (204 / Plaintext OK)
+        :::8444 => (202 / OK)
+    
+      www.example.com
+        :::8001 => (200 / OK)
+        :::8443 => (204 / Plaintext OK)
+        :::8444 => (202 / OK)
+        ::1:8001 => (200 / OK)
+        ::1:8443 => (204 / Plaintext OK)
+        ::1:8444 => (202 / OK)
+        127.0.0.1:8001 => (200 / OK)
+        127.0.0.1:8443 => (204 / Plaintext OK)
+        127.0.0.1:8444 => (202 / OK)
+    
+      localhost.example.com
+        :::8001 => (200 / OK)
+        :::8443 => (204 / Plaintext OK)
+        :::8444 => (202 / OK)
+        ::1:8001 => (200 / OK)
+        ::1:8443 => (204 / Plaintext OK)
+        ::1:8444 => (202 / OK)
+        127.0.0.1:8001 => (200 / OK)
+        127.0.0.1:8443 => (204 / Plaintext OK)
+        127.0.0.1:8444 => (202 / OK)
+    
+    
+    rst@r57 chaos % 
 
 ## Test & Verbose localhost
 
