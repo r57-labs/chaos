@@ -4,10 +4,10 @@ chaos is an 'origin' IP scanner developed by RST in collaboration with ChatGPT. 
 
 chaos was rapidly prototyped from idea to functional proof-of-concept in less than 24 hours using our principles of DevOps with ChatGPT.
 
-   usage: chaos.py [-h] -f FQDN -i IP [-a AGENT] [-C] [-D] [-j JITTER] [-o OUTPUT] [-p PORTS] [-P] [-r] [-s SLEEP] [-t TIMEOUT] [-T] [-v] [-x] 
+    usage: chaos.py [-h] -f FQDN -i IP [-a AGENT] [-C] [-D] [-j JITTER] [-o OUTPUT] [-p PORTS] [-P] [-r] [-s SLEEP] [-t TIMEOUT] [-T] [-v] [-x] 
              _..._
          .-'`     `'-.
-       __|___________|__
+       __|___________|__ 
        \               /
         `._  CHAOS _.'
            `-------`
@@ -79,29 +79,39 @@ chaos was rapidly prototyped from idea to functional proof-of-concept in less th
 # Examples
 
 ## Localhost Testing
-- Launch python HTTP server
-    % python3 -u -m http.server 8001                                                                             
+
+Launch python HTTP server
+
+    % python3 -u -m http.server 8001
     Serving HTTP on :: port 8001 (http://[::]:8001/) ...
-- Launch ncat as HTTP on a port detected as SSL; use a loop because --keep-open can hang
+
+Launch ncat as HTTP on a port detected as SSL; use a loop because --keep-open can hang
+
     % while true; do ncat -lvp 8443 -c 'printf "HTTP/1.0 204 Plaintext OK\n\n<html></html>\n"'; done
     Ncat: Version 7.94 ( https://nmap.org/ncat )
     Ncat: Listening on [::]:8443
     Ncat: Listening on 0.0.0.0:8443
-- Also launch ncat as SSL on a port that will default to HTTP detection
+
+Also launch ncat as SSL on a port that will default to HTTP detection
+
     % while true; do ncat --ssl -lvp 8444 -c 'printf "HTTP/1.0 202 OK\n\n<html></html>\n"'; done    
     Ncat: Version 7.94 ( https://nmap.org/ncat )
     Ncat: Generating a temporary 2048-bit RSA key. Use --ssl-key and --ssl-cert to use a permanent one.
     Ncat: SHA-1 fingerprint: 0208 1991 FA0D 65F0 608A 9DAB A793 78CB A6EC 27B8
     Ncat: Listening on [::]:8444
     Ncat: Listening on 0.0.0.0:8444
-- Prepare an FQDN file:
+
+Prepare an FQDN file:
+
     % cat ../test_localhost_fqdn.txt 
     www.example.com
     localhost.example.com
     localhost.local
     localhost
     notreally.arealdomain
-- Prepare an IP file / list:
+
+Prepare an IP file / list:
+
     % cat ../test_localhost_ips.txt 
     127.0.0.1
     127.0.0.0/29
@@ -109,13 +119,17 @@ chaos was rapidly prototyped from idea to functional proof-of-concept in less th
     -6.a
     =4.2
     ::1
-- Run the scan
--- Note an IPv6 network added to IPs on the CLI
--- -p to specify the ports we are listening on
--- -x for single threaded run to give our ncat servers time to restart
--- -s0.2 short sleep for our ncat servers to restart
--- -t1 to timeout after 1 second
-    % ./chaos.py -f ../test_localhost_fqdn.txt -i ../test_localhost_ips.txt,::1/126 -p 8001,8443,8444 -x -s0.2 -t1
+
+Run the scan
+
+- Note an IPv6 network added to IPs on the CLI
+- -p to specify the ports we are listening on
+- -x for single threaded run to give our ncat servers time to restart
+- -s0.2 short sleep for our ncat servers to restart
+- -t1 to timeout after 1 second
+
+`% ./chaos.py -f ../test_localhost_fqdn.txt -i ../test_localhost_ips.txt,::1/126 -p 8001,8443,8444 -x -s0.2 -t1`
+
     2023-06-21 08:18:54 [WARN] Ignoring invalid FQDN value: localhost.local
     2023-06-21 08:18:54 [WARN] Ignoring invalid FQDN value: localhost
     2023-06-21 08:18:54 [WARN] Ignoring invalid FQDN value: notreally.arealdomain
@@ -168,7 +182,9 @@ chaos was rapidly prototyped from idea to functional proof-of-concept in less th
     
 
 ## Verbose localhost
-- `-v` verbose option provides additional output
+
+`-v` verbose option provides additional output
+
     % ./chaos.py -f ../test_localhost_fqdn.txt -i ../test_localhost_ips.txt,::1/126 -p 8001,8443,8444 -x -s0.2 -t1 -v
     2023-06-21 08:23:26 [WARN] Ignoring invalid FQDN value: localhost.local
     2023-06-21 08:23:26 [WARN] Ignoring invalid FQDN value: localhost
