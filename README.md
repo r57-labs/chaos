@@ -38,7 +38,7 @@ chaos was rapidly prototyped from idea to functional proof-of-concept in less th
      cha*os (n): complete disorder and confusion
      (ver: 0.9.4)
 
-![v94_csv](https://github.com/r57-labs/chaos/assets/134399975/78235493-b623-4535-97bc-4492f5464fab)
+![v94_csv](https://github.com/r57-labs/chaos/assets/134399975/eb1b8a55-2e0b-4d50-ac96-d33f4b795615)
 
 
 # Features
@@ -137,7 +137,7 @@ Run the scan
 - -t1 to timeout after 1 second
 
   
-![test_local](https://github.com/r57-labs/chaos/assets/134399975/bb767838-b463-4c75-8643-d552d3e9f96c)
+![test_local](https://github.com/r57-labs/chaos/assets/134399975/99af5a20-8dbf-4521-aade-8c46cf619788)
 
     % ./chaos.py -f ../test_localhost_fqdn.txt -i ../test_localhost_ips.txt,::1/126 -p 8001,8443,8444 -x -s0.2 -t1   
     2023-06-21 12:48:33 [WARN] Ignoring invalid FQDN value: localhost.local
@@ -230,7 +230,7 @@ Run the scan
 
 `-v` verbose option provides additional output
 
-![test_local_verbose](https://github.com/r57-labs/chaos/assets/134399975/738b29f0-1b5e-4923-8303-34c7137724aa)
+![test_local_verbose](https://github.com/r57-labs/chaos/assets/134399975/1f27a480-a9c7-4edb-90ba-dd0094021929)
 
 
 # Known Defects
