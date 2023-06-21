@@ -2,6 +2,8 @@
 
 chaos is an 'origin' IP scanner developed by RST in collaboration with ChatGPT.  It is a niche utility with an intended audience of mostly penetration testers and bug hunters.  
 
+An origin-IP is a term-of-art expression describing the final public IP destination for websites that are publicly served via 3rd parties.  If you'd like to understand more about why anyone might be interested in Origin-IPs, [please check out our blog post](https://r57labs.com/labs_chaos).
+
 chaos was rapidly prototyped from idea to functional proof-of-concept in less than 24 hours using our principles of DevOps with ChatGPT.
 
     usage: chaos.py [-h] -f FQDN -i IP [-a AGENT] [-C] [-D] [-j JITTER] [-o OUTPUT] [-p PORTS] [-P] [-r] [-s SLEEP] [-t TIMEOUT] [-T] [-v] [-x] 
