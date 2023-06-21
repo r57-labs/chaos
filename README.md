@@ -1,4 +1,4 @@
-# [chaos]()
+# [chaos](https://r57labs.com/chaos)
 
 chaos is an 'origin' IP scanner developed by RST in collaboration with ChatGPT.  It is a niche utility with an intended audience of mostly penetration testers and bug hunters.  
 
@@ -38,12 +38,14 @@ chaos was rapidly prototyped from idea to functional proof-of-concept in less th
 
 ![v94_csv](https://github.com/r57-labs/chaos/assets/134399975/78235493-b623-4535-97bc-4492f5464fab)
 
+
 # Features
 - Threaded for performance gains
 - Real-time status updates and progress bars, nice for large scans ;)
 - Flexible user options for various scenarios & constraints
 - Dataset reduction for improved scan times
 - Easy to use CSV output
+
 
 # Installation
 1. Download / clone / unzip / whatever
@@ -53,6 +55,7 @@ chaos was rapidly prototyped from idea to functional proof-of-concept in less th
 5. `(env) pip3 install -U pip setuptools`
 6. `(env) pip3 install -U -r ./requirements.txt`
 7. `(env) ./chaos.py -h`
+
 
 # Options
     -h, --help            show this help message and exit
@@ -77,6 +80,7 @@ chaos was rapidly prototyped from idea to functional proof-of-concept in less th
     -T, --test            Test-mode; don't send requests
     -v, --verbose         Enable verbose output
     -x, --singlethread    Single threaded execution; for 1-2 core systems; default threads=(cores-1) if cores>2
+
 
 # Examples
 
@@ -217,6 +221,7 @@ Run the scan
     
     rst@r57 chaos % 
 
+
 ## Test & Verbose localhost
 
 `-T` runs in test mode (do everything except send requests)
@@ -226,5 +231,28 @@ Run the scan
 ![test_local_verbose](https://github.com/r57-labs/chaos/assets/134399975/738b29f0-1b5e-4923-8303-34c7137724aa)
 
 
+# Known Defects
+
+- HTTP/HTTPS detection is not ideal
+- Need option to adjust CSV newline delimiter
+- Need options to adjust where long strings / many lines are truncated
+- Try to figure out why we marked requests v2.x as required ;)
+- Options for very-verbose / quiet
+- Stagger thread launch when we're using sleep / jitter
+- Search for meta-refresh in 200 responses
+- Content-Location header for 201s ?
+- Improve thread name generation so we have the right number of unique names
+- Sanity check on IPv6 netmasks to prevent scans that outlive the sun?
+- TBD?
+
+
 # Related Links
+- [chaos blog post](https://r57labs.com/labs_chaos)
+
+
+# Disclaimers
+- Copyright (C) 2023 RST
+- This software is distributed on an "AS IS" basis, without express or implied warranties of any kind
+- This software is intended for research and/or authorized testing; it is your responsibility to ensure you are authorized to use this software in any way
+- By using this software you acknowledge that you are responsible for your actions and assume all liability for any direct, indirect, or other damages
 
