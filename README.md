@@ -52,9 +52,9 @@ chaos was rapidly prototyped from idea to functional proof-of-concept in less th
 # Installation
 1. Download / clone / unzip / whatever
 2. `cd path/to/chaos`
-3. `virtualenv env`
-4. `source env/bin/activate`
-5. `(env) pip3 install -U pip setuptools`
+3. `pip3 install -U pip setuptools virtualenv`
+4. `virtualenv env`
+5. `source env/bin/activate`
 6. `(env) pip3 install -U -r ./requirements.txt`
 7. `(env) ./chaos.py -h`
 
