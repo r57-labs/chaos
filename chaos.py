@@ -502,12 +502,11 @@ def main():
     ###########################
     # Parse command line arguments
     parser = argparse.ArgumentParser(description=f'''{ascii_art}\n\n Origin IP Scanner developed with ChatGPT\n cha*os (n): complete disorder and confusion\n (ver: {__version__})''', formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser._optionals.max_help_position = 70
     parser.add_argument('-f', '--fqdn', type=argparse.FileType('r'), help='Path to FQDN file (one FQDN per line)', required=True)
     parser.add_argument('-i', '--ip', type=str, help='IP address(es) for HTTP requests (Comma-separated IPs, IP networks, and/or files with IP/network per line)', required=True)
     parser.add_argument('-a', '--agent', type=str, help='User-Agent header value for requests', default=f"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36 ch4*0s/{__version__}", required=False)
     parser.add_argument('-C', '--csv', action='store_true', help='Append CSV output to OUTPUT_FILE.csv')
-    parser.add_argument('-D', '--dns', action='store_true', help='Perform fwd/rev DNS lookups on FQDN/IP values prior to request; no impact to testing queue')
+    parser.add_argument('-D', '--dns', action='store_true', help='Perform (non-threaded) fwd/rev DNS lookups on FQDN/IP values prior to request; no impact to testing queue')
     parser.add_argument('-j', '--jitter', type=validate_time_param, help='Add a 0-N second randomized delay to the sleep value', required=False)
     parser.add_argument('-o', '--output', type=argparse.FileType('a'), help='Append console output to FILE')
     parser.add_argument('-p', '--ports', type=str, default='80,443', help='Comma-separated list of TCP ports to use (default: "80,443")')
@@ -527,6 +526,12 @@ def main():
     global logger 							# kludge so we don't have to pass logger to helper functions
     logger = Logger(level, True, args.output, args.verbose)
     warnings.filterwarnings('ignore', message='Unverified HTTPS request') 	# ignore SSL/TLS errors
+
+    ###########################
+    # Validate Jitter vs Sleep
+    if args.jitter and not args.sleep:
+        # bailing is the cleanest solution for now
+        parser.error(f"Cannot set -j/--jitter ({args.jitter}) without using -s/--sleep")
 
     ###########################
     # Validate CSV
@@ -619,8 +624,6 @@ def main():
     logger.log(f'* Thread(s): {max_threads}')
     logger.log(f'* Sleep value: {args.sleep}') if args.sleep else None
     logger.log(f'* Jitter value: {args.jitter}') if args.jitter else None
-    # TBD: doesn't seem like it works as described below, so verify
-    logger.log(f'* Ignoring jitter; sleep not set') if (args.jitter and not args.sleep) else None
     logger.log(f'* Timeout: {args.timeout}')
     logger.log(f'* User-Agent: {args.agent}') if args.agent else None
     logger.log(f'* Randomized IPs/ports') if args.randomize else None
@@ -637,6 +640,9 @@ def main():
         else:
             # reverse lookups
             for ip in ips:
+                jitter_val = random.uniform(0, args.jitter) if args.jitter else 0
+                if (float(jitter_val + sleep_val) > 0):
+                    time.sleep(sleep_val) # sleep between requests
                 dns_rslt = ""
                 try:
                     dns_rslt = socket.gethostbyaddr(ip)
@@ -647,11 +653,11 @@ def main():
                     logger.log(f" ! [Reverse DNS] Timeout resolving {ip}", 'ERROR')
                 except Exception as e:
                     logger.log(f" ! [Reverse DNS] ERROR with {ip}: {e}", 'ERROR')
+            # fwd lookips
+            for fqdn in valid_fqdns:
                 jitter_val = random.uniform(0, args.jitter) if args.jitter else 0
                 if (float(jitter_val + sleep_val) > 0):
                     time.sleep(sleep_val) # sleep between requests
-            # fwd lookips
-            for fqdn in valid_fqdns:
                 dns_rslt = ""
                 try:
                     dns_rslt = socket.gethostbyname_ex(fqdn)
@@ -662,9 +668,6 @@ def main():
                     logger.log(f" ! [Forward DNS] Timeout resolving {fqdn}", 'ERROR')
                 except Exception as e:
                     logger.log(f" ! [Forward DNS] ERROR with {fqdn}: {e}", 'ERROR')
-                jitter_val = random.uniform(0, args.jitter) if args.jitter else 0
-                if (float(jitter_val + sleep_val) > 0):
-                    time.sleep(sleep_val) # sleep between requests
 
 
     ###########################
@@ -737,7 +740,10 @@ def main():
     ###########################
     # parse results
     if len(results) == 0:
-        logger.log("No Results", 'WARN')
+        if args.test:
+            logger.log("Test mode completed")
+        else:
+            logger.log("No Results", 'WARN')
     else:
         fqdn_results = {}
         rslt_output = ""
