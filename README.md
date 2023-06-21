@@ -220,45 +220,10 @@ Run the scan
 ## Test & Verbose localhost
 
 `-T` runs in test mode (do everything except send requests)
-`-v` verbose option provides additional output
-![test_local_verbose](https://github.com/r57-labs/chaos/assets/134399975/738b29f0-1b5e-4923-8303-34c7137724aa)
 
-    % ./chaos.py -f ../test_localhost_fqdn.txt -i ../test_localhost_ips.txt,::1/126 -p 8001,8443,8444 -x -s0.2 -t1 -v
-    2023-06-21 08:23:26 [WARN] Ignoring invalid FQDN value: localhost.local
-    2023-06-21 08:23:26 [WARN] Ignoring invalid FQDN value: localhost
-    2023-06-21 08:23:26 [WARN] Ignoring invalid FQDN value: notreally.arealdomain
-    2023-06-21 08:23:26 [----] IP parameter data := ['../test_localhost_ips.txt', '::1/126']
-    2023-06-21 08:23:26 [----] IP param value is a file, reading ../test_localhost_ips.txt
-    2023-06-21 08:23:26 [----] IP param value is not a file, extending ['::1/126']
-    2023-06-21 08:23:26 [----] Found 7 temporary IPs
-    2023-06-21 08:23:26 [----] De-dupe complete; have 7 temporary IPs
-    2023-06-21 08:23:26 [----] Starting network checks; tmp_ips := ['::1', '=4.2', '127.0.0.0/29', '-6.a', 'not_an_ip_addr', '127.0.0.1', '::1/126']
-    2023-06-21 08:23:26 [----] Testing value: ::1
-    2023-06-21 08:23:26 [----] Addr value ::1 parsed as ipaddress.ip_network(); extending records
-    2023-06-21 08:23:26 [----] Testing value: =4.2
-    2023-06-21 08:23:26 [----] IPv4/IPv6 testing addr value =4.2
-    2023-06-21 08:23:26 [WARN] Error: invalid IP address or CIDR block =4.2
-    2023-06-21 08:23:26 [----] Testing value: 127.0.0.0/29
-    2023-06-21 08:23:26 [----] Addr value 127.0.0.0/29 parsed as ipaddress.ip_network(); extending records
-    2023-06-21 08:23:26 [----] Testing value: -6.a
-    2023-06-21 08:23:26 [----] IPv4/IPv6 testing addr value -6.a
-    2023-06-21 08:23:26 [WARN] Error: invalid IP address or CIDR block -6.a
-    2023-06-21 08:23:26 [----] Testing value: not_an_ip_addr
-    2023-06-21 08:23:26 [----] IPv4/IPv6 testing addr value not_an_ip_addr
-    2023-06-21 08:23:26 [WARN] Error: invalid IP address or CIDR block not_an_ip_addr
-    2023-06-21 08:23:26 [----] Testing value: 127.0.0.1
-    2023-06-21 08:23:26 [----] Addr value 127.0.0.1 parsed as ipaddress.ip_network(); extending records
-    2023-06-21 08:23:26 [----] Testing value: ::1/126
-    2023-06-21 08:23:26 [----] Addr value ::1/126 parsed as ipaddress.ip_network(); extending records
-    2023-06-21 08:23:26 [----] Network checks complete; have 15 IPs
-    2023-06-21 08:23:26 [----] De-dupe complete; have 12 IPs
-    2023-06-21 08:23:26 [----] Validation complete; have 12 IPs
-    2023-06-21 08:23:26 [----] De-dupe complete; have 12 IPs
-    2023-06-21 08:23:26 [----] 12 IP addresses parsed from '../test_localhost_ips.txt,::1/126' := ['::1', '::', '127.0.0.4', '127.0.0.2', '127.0.0.0', '127.0.0.5', '::2', '127.0.0.7', '127.0.0.1', '::3', '127.0.0.6', '127.0.0.3']
-    2023-06-21 08:23:26 [INFO] * ---- <META> ---- *
-    2023-06-21 08:23:26 [INFO] * Version: 0.9.4
-    2023-06-21 08:23:26 [INFO] * FQDN file: ../test_localhost_fqdn.txt
-    ...
+`-v` verbose option provides additional output
+
+![test_local_verbose](https://github.com/r57-labs/chaos/assets/134399975/738b29f0-1b5e-4923-8303-34c7137724aa)
 
 
 # Related Links
