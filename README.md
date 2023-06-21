@@ -36,6 +36,8 @@ chaos was rapidly prototyped from idea to functional proof-of-concept in less th
      cha*os (n): complete disorder and confusion
      (ver: 0.9.4)
 
+![v94_csv](https://github.com/r57-labs/chaos/assets/134399975/78235493-b623-4535-97bc-4492f5464fab)
+
 # Features
 - Threaded for performance gains
 - Real-time status updates and progress bars, nice for large scans ;)
@@ -128,8 +130,10 @@ Run the scan
 - -s0.2 short sleep for our ncat servers to restart
 - -t1 to timeout after 1 second
 
-`% ./chaos.py -f ../test_localhost_fqdn.txt -i ../test_localhost_ips.txt,::1/126 -p 8001,8443,8444 -x -s0.2 -t1`
+  
+![test_local](https://github.com/r57-labs/chaos/assets/134399975/bb767838-b463-4c75-8643-d552d3e9f96c)
 
+    % ./chaos.py -f ../test_localhost_fqdn.txt -i ../test_localhost_ips.txt,::1/126 -p 8001,8443,8444 -x -s0.2 -t1
     2023-06-21 08:18:54 [WARN] Ignoring invalid FQDN value: localhost.local
     2023-06-21 08:18:54 [WARN] Ignoring invalid FQDN value: localhost
     2023-06-21 08:18:54 [WARN] Ignoring invalid FQDN value: notreally.arealdomain
@@ -184,6 +188,7 @@ Run the scan
 ## Verbose localhost
 
 `-v` verbose option provides additional output
+![test_local_verbose](https://github.com/r57-labs/chaos/assets/134399975/738b29f0-1b5e-4923-8303-34c7137724aa)
 
     % ./chaos.py -f ../test_localhost_fqdn.txt -i ../test_localhost_ips.txt,::1/126 -p 8001,8443,8444 -x -s0.2 -t1 -v
     2023-06-21 08:23:26 [WARN] Ignoring invalid FQDN value: localhost.local
