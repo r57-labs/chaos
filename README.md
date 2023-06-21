@@ -185,8 +185,9 @@ Run the scan
         :::8443 => (204 / Plaintext OK)
     
 
-## Verbose localhost
+## Test & Verbose localhost
 
+`-T` runs in test mode (do everything except send requests)
 `-v` verbose option provides additional output
 ![test_local_verbose](https://github.com/r57-labs/chaos/assets/134399975/738b29f0-1b5e-4923-8303-34c7137724aa)
 
